@@ -1,0 +1,589 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>劈形物体 A 与小球 B · 轨迹演示</title>
+<style>
+  :root{
+    --bg:#08101d; --panel:#101a2b; --line:#22314a; --text:#e9f0f8; --muted:#94a6c2;
+    --accent:#4ea1ff; --ok:#37d67a; --warn:#ffa62b; --danger:#ff5c5c; --violet:#c084fc;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0}
+  body{
+    background:radial-gradient(1400px 900px at 15% -10%, #16243c 0%, var(--bg) 62%);
+    color:var(--text); font:16px/1.5 "Microsoft YaHei","PingFang SC","Segoe UI",sans-serif;
+    overflow:hidden;
+  }
+  #app{display:grid;grid-template-columns:minmax(0,1fr) 430px;height:100vh}
+  #stage{position:relative;min-width:0}
+  canvas{display:block;width:100%;height:100%}
+  #badge{
+    position:absolute;left:20px;top:18px;padding:8px 14px;border-radius:10px;
+    background:#0b1220cc;border:1px solid var(--line);color:var(--muted);font-size:14px
+  }
+  #legend{
+    position:absolute;right:20px;top:18px;display:flex;gap:16px;flex-wrap:wrap;max-width:560px;
+    background:#0b1220cc;border:1px solid var(--line);border-radius:12px;padding:10px 16px;font-size:14px
+  }
+  #legend i{display:inline-block;width:26px;height:4px;border-radius:2px;margin-right:7px;vertical-align:middle}
+  #legend .dash i{background:repeating-linear-gradient(90deg,#ffd166 0 6px,transparent 6px 11px)}
+
+  aside{background:linear-gradient(180deg,#0d1728,#0a1322);border-left:1px solid var(--line);
+        padding:16px 18px 18px;overflow:auto;display:flex;flex-direction:column;gap:12px}
+  h1{margin:0;font-size:20px;letter-spacing:.5px}
+  .sub{margin:-6px 0 0;color:var(--muted);font-size:13px}
+
+  #state{
+    border-radius:14px;padding:14px 16px;font-size:29px;font-weight:700;text-align:center;
+    background:#0b1220;border:1px solid var(--line);letter-spacing:.5px;color:var(--ok)
+  }
+  #state small{display:block;font-size:14px;font-weight:400;color:var(--muted);letter-spacing:0;margin-top:6px}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+  .card h2{margin:0 0 8px;font-size:13px;color:var(--muted);font-weight:600;letter-spacing:1px}
+  .grid{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;font-size:16px}
+  .grid .k{color:var(--muted);white-space:nowrap}
+  .grid .v{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+  .note{margin-top:8px;color:#7f90ab;font-size:13px}
+
+  .slider{margin:10px 0 4px}
+  .slider .top{display:flex;justify-content:space-between;align-items:baseline;font-size:16px;margin-bottom:2px}
+  .slider .top span{color:var(--accent);font-variant-numeric:tabular-nums;font-weight:700;font-size:17px}
+  input[type=range]{-webkit-appearance:none;width:100%;height:22px;background:transparent;cursor:pointer}
+  input[type=range]::-webkit-slider-runnable-track{height:8px;border-radius:4px;background:#1b2a43}
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:var(--accent);
+    border:3px solid #0b1220;box-shadow:0 0 0 1px #2d5b96;margin-top:-7px
+  }
+  .btns{display:flex;gap:10px;margin-top:10px}
+  button{
+    flex:1;padding:11px 12px;border-radius:11px;border:1px solid var(--line);background:#16233a;
+    color:var(--text);font-size:16px;cursor:pointer
+  }
+  button:hover{border-color:var(--accent)}
+  button.primary{background:#1d3a63;border-color:#2d5b96}
+  .toggles{display:flex;gap:16px;font-size:14px;color:var(--muted)}
+  .toggles label{display:flex;align-items:center;gap:6px;cursor:pointer}
+  .toggles input{width:16px;height:16px;accent-color:var(--accent)}
+  .ans{font-size:15px;line-height:1.7;color:#cfe0f5}
+  .ans b{color:var(--ok)}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="stage">
+    <canvas id="cv"></canvas>
+    <div id="badge">固定斜面上放劈形物体 A，A 的上表面水平，光滑小球 B 放在上面；释放后看 B 走什么轨迹</div>
+    <div id="legend">
+      <span><i style="background:#ff5c5c"></i>重力 G</span>
+      <span><i style="background:#4ea1ff"></i>支持力 N</span>
+      <span class="dash"><i></i>B 的水平位置参考线</span>
+    </div>
+  </div>
+
+  <aside>
+    <h1>B 的轨迹是什么？</h1>
+    <p class="sub">拖动滑块改变斜面倾角，观察小球下落路线</p>
+
+    <div id="state">竖直向下的直线<small>水平方向始终不受力 → 水平位移恒为 0</small></div>
+
+    <div class="card">
+      <h2>实时数据</h2>
+      <div class="grid">
+        <div class="k">时间 t</div><div class="v" id="vT">0.00 s</div>
+        <div class="k">A 沿斜面下滑 s</div><div class="v" id="vS">0.00 m</div>
+        <div class="k">A 的速度 v_A</div><div class="v" id="vVA">0.00 m/s</div>
+        <div class="k">B 下落高度 h</div><div class="v" id="vH">0.00 m</div>
+        <div class="k">B 的竖直速度 v_B</div><div class="v" id="vVB">0.00 m/s</div>
+        <div class="k">B 的水平位移</div><div class="v" id="vXB">0.00 m</div>
+        <div class="k">A 的加速度 a_A</div><div class="v" id="vAA">—</div>
+        <div class="k">B 的加速度 a_B</div><div class="v" id="vAB">—</div>
+        <div class="k">A 对 B 的支持力 N_B</div><div class="v" id="vNB">—</div>
+      </div>
+      <div class="note">取 g = 10 m/s²；B 在 A 上时 a_B = g sin²θ，脱离后 a_B = g</div>
+    </div>
+
+    <div class="card">
+      <h2>参数</h2>
+      <div class="slider">
+        <div class="top"><b>斜面倾角 θ</b><span id="thetaVal">30°</span></div>
+        <input id="theta" type="range" min="15" max="45" step="1" value="30" />
+      </div>
+      <div class="slider">
+        <div class="top"><b>小球质量 m_B</b><span id="mVal">1.0 kg</span></div>
+        <input id="m" type="range" min="0.5" max="5" step="0.1" value="1" />
+      </div>
+      <div class="toggles">
+        <label><input id="showTrail" type="checkbox" checked /> 显示 B 的轨迹</label>
+        <label><input id="showForce" type="checkbox" checked /> 显示受力</label>
+      </div>
+      <div class="btns">
+        <button id="pause" class="primary">暂停</button>
+        <button id="reset">重新释放</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>为什么是竖直直线</h2>
+      <div class="ans">
+        A 的上表面水平且光滑，B 只受<b>竖直方向</b>的力（重力、A 的支持力），水平方向合力恒为 0；
+        B 初速度为零 → 水平速度始终为 0 → B 的水平位置不变。<br />
+        所以轨迹是<b>竖直向下的直线</b>（答案 B）。<br />
+        注意：A 下滑时上表面水平下落得比自由落体慢，B 与 A 保持接触，a_B = g sin²θ ≈ 2.5 m/s²。
+      </div>
+    </div>
+  </aside>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  const G = 10;
+  const BASE = 7.2;        // 固定斜面底边长（米）
+  const LA = 3.2;          // 劈形物体 A 上表面长度（米）
+  const RB = 0.22;         // 小球半径（米）
+
+  const cv = document.getElementById("cv");
+  const ctx = cv.getContext("2d");
+
+  const S = {
+    theta: 30, mB: 1,
+    t: 0, s: 0, vA: 0,           // A：沿斜面位移、速度
+    bY: 0, bV: 0,                // B：竖直位置、竖直速度
+    xB: 0,                       // B 的水平位置（恒定）
+    phase: "onA",                // onA | free | hit
+    paused: false,
+    showTrail: true,
+    showForce: true,
+    trail: [],
+  };
+
+  let view = { scale: 60, ox: 70, oy: 0, w: 0, h: 0, target: 0 };
+  const rad = (d) => (d * Math.PI) / 180;
+  const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+
+  function resize() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const w = cv.parentElement.clientWidth;
+    const h = cv.parentElement.clientHeight;
+    cv.width = Math.floor(w * dpr);
+    cv.height = Math.floor(h * dpr);
+    cv.style.width = w + "px";
+    cv.style.height = h + "px";
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    view.w = w; view.h = h;
+    const th = rad(S.theta);
+    const H = BASE * Math.tan(th);
+    view.target = Math.min((w - 150) / (BASE + 0.8), (h - 150) / (H + 1.4));
+    if (!view.scale || Math.abs(view.scale - view.target) > 60) view.scale = view.target;
+    view.ox = 78;
+    view.oy = h - 96;
+  }
+
+  const X = (x) => view.ox + x * view.scale;
+  const Y = (y) => view.oy - y * view.scale;
+
+  function geometry() {
+    const th = rad(S.theta);
+    const tan = Math.tan(th);
+    const H = BASE * tan;
+    // A 的左上顶点沿斜面下滑 s
+    const xTL = 0.55 + S.s * Math.cos(th);
+    const yTL = H - xTL * tan;
+    return {
+      th, tan, H,
+      xTL, yTL,
+      xTR: xTL + LA, yTR: yTL,
+      xBR: xTL + LA, yBR: yTL - LA * tan,
+    };
+  }
+
+  function reset() {
+    const g0 = geometry();
+    S.t = 0; S.s = 0; S.vA = 0;
+    S.xB = g0.xTL + LA * 0.55;
+    S.bY = g0.yTL + RB;
+    S.bY0 = S.bY;
+    S.bV = 0;
+    S.phase = "onA";
+    S.trail = [[S.xB, S.bY]];
+    S.paused = false;
+    document.getElementById("pause").textContent = "暂停";
+  }
+
+  function physics(dt) {
+    if (S.paused) return;
+    const th = rad(S.theta);
+    const g0 = geometry();
+    if (S.phase === "hit") return;
+
+    S.t += dt;
+
+    // A：斜面光滑 → a = g sinθ
+    S.vA += G * Math.sin(th) * dt;
+    S.s += S.vA * dt;
+
+    if (S.phase === "onA") {
+      // B 与 A 保持接触：a_B = g sin²θ（竖直向下）
+      const aB = G * Math.sin(th) * Math.sin(th);
+      S.bV += aB * dt;
+      S.bY -= S.bV * dt;
+      // A 的左端追上 B 的水平位置 → B 脱离上表面
+      const gNow = geometry();
+      const yTop = gNow.yTL + RB;
+      if (S.bY > yTop) S.bY = yTop;          // 始终贴在 A 的上表面
+      if (gNow.xTL >= S.xB - 0.02) S.phase = "free";
+    } else {
+      S.bV += G * dt;
+      S.bY -= S.bV * dt;
+    }
+
+    const gNow = geometry();
+    S.trail.push([S.xB, S.bY]);
+    if (S.trail.length > 4000) S.trail.shift();
+
+    // B 落到固定斜面上
+    const yIncline = gNow.H - S.xB * gNow.tan;
+    if (S.bY - RB <= yIncline + 0.02) {
+      S.bY = yIncline + RB;
+      S.phase = "hit";
+    }
+  }
+
+  function strokeArrow(x1, y1, x2, y2, color, width, dash) {
+    const ang = Math.atan2(y2 - y1, x2 - x1);
+    const head = Math.max(13, width * 4.2);
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.fillStyle = color;
+    ctx.lineWidth = width;
+    ctx.lineCap = "round";
+    if (dash) ctx.setLineDash(dash);
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2 - Math.cos(ang) * head * 0.85, y2 - Math.sin(ang) * head * 0.85);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.moveTo(x2, y2);
+    ctx.lineTo(x2 - head * Math.cos(ang - 0.42), y2 - head * Math.sin(ang - 0.42));
+    ctx.lineTo(x2 - head * Math.cos(ang + 0.42), y2 - head * Math.sin(ang + 0.42));
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function pill(x, y, text, color) {
+    ctx.save();
+    ctx.font = "600 18px 'Microsoft YaHei','PingFang SC',sans-serif";
+    const w = ctx.measureText(text).width + 18;
+    const h = 30;
+    const left = x - w / 2;
+    ctx.fillStyle = "rgba(8,16,29,0.88)";
+    ctx.strokeStyle = "rgba(34,49,74,0.9)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    const r = 8, t = y - h / 2;
+    ctx.moveTo(left + r, t);
+    ctx.arcTo(left + w, t, left + w, t + h, r);
+    ctx.arcTo(left + w, t + h, left, t + h, r);
+    ctx.arcTo(left, t + h, left, t, r);
+    ctx.arcTo(left, t, left + w, t, r);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = color;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(text, left + w / 2, y + 1);
+    ctx.restore();
+  }
+
+  function draw() {
+    const g0 = geometry();
+    const th = g0.th;
+    const H = g0.H;
+
+    if (view.target) view.scale += (view.target - view.scale) * 0.16;
+    ctx.clearRect(0, 0, view.w, view.h);
+
+    // 地面
+    ctx.save();
+    ctx.strokeStyle = "#41597d";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(-20, Y(0));
+    ctx.lineTo(view.w + 20, Y(0));
+    ctx.stroke();
+    ctx.strokeStyle = "rgba(65,89,125,0.55)";
+    ctx.lineWidth = 2;
+    for (let x = -20; x < view.w + 20; x += 22) {
+      ctx.beginPath();
+      ctx.moveTo(x, Y(0));
+      ctx.lineTo(x - 14, Y(0) + 14);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // 固定斜面（左侧竖直、右下方斜边）
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(X(0), Y(0));
+    ctx.lineTo(X(0), Y(H));
+    ctx.lineTo(X(BASE), Y(0));
+    ctx.closePath();
+    const grad = ctx.createLinearGradient(X(0), Y(H), X(BASE), Y(0));
+    grad.addColorStop(0, "#1b2a45");
+    grad.addColorStop(1, "#131f36");
+    ctx.fillStyle = grad;
+    ctx.fill();
+    ctx.strokeStyle = "#5b7bb0";
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    ctx.restore();
+
+    // 倾角标注
+    ctx.save();
+    ctx.strokeStyle = "#94a6c2";
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(X(BASE), Y(0), 70, Math.PI, Math.PI + th);
+    ctx.stroke();
+    ctx.fillStyle = "#cfe0f5";
+    ctx.font = "700 22px 'Microsoft YaHei',sans-serif";
+    ctx.textAlign = "right";
+    ctx.textBaseline = "middle";
+    ctx.fillText("θ = " + S.theta + "°", X(BASE) - 84 * Math.cos(th / 2) - 6, Y(0) - 84 * Math.sin(th / 2) + 6);
+    ctx.restore();
+
+    // A 的轨迹（沿斜面）
+    // 劈形物体 A
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(X(g0.xTL), Y(g0.yTL));
+    ctx.lineTo(X(g0.xTR), Y(g0.yTR));
+    ctx.lineTo(X(g0.xBR), Y(g0.yBR));
+    ctx.closePath();
+    ctx.fillStyle = "#3a5480";
+    ctx.strokeStyle = "#9db9e6";
+    ctx.lineWidth = 3;
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+
+    // A 的标签
+    ctx.save();
+    ctx.fillStyle = "#cfe0f5";
+    ctx.font = "700 20px 'Microsoft YaHei',sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("A", X((g0.xTL + g0.xBR) / 2), Y((g0.yTL + g0.yBR) / 2 + 0.15));
+    ctx.restore();
+
+    // A 的上表面（水平，单独加粗，强调“水平”）
+    ctx.save();
+    ctx.strokeStyle = "#ffd166";
+    ctx.lineWidth = 4;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(X(g0.xTL), Y(g0.yTL));
+    ctx.lineTo(X(g0.xTR), Y(g0.yTR));
+    ctx.stroke();
+    ctx.fillStyle = "#ffd166";
+    ctx.font = "600 15px 'Microsoft YaHei',sans-serif";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "bottom";
+    ctx.fillText("A 的上表面（水平、光滑）", X(g0.xTR) + 10, Y(g0.yTR) - 6);
+    ctx.restore();
+
+    // 斜面表面（加粗，画在 A 之上，保证斜边连续）
+    ctx.save();
+    ctx.strokeStyle = "#8fb4ee";
+    ctx.lineWidth = 5;
+    ctx.lineCap = "round";
+    ctx.globalAlpha = 0.95;
+    ctx.beginPath();
+    ctx.moveTo(X(0), Y(H));
+    ctx.lineTo(X(BASE), Y(0));
+    ctx.stroke();
+    ctx.restore();
+
+    // B 的轨迹
+    if (S.showTrail && S.trail.length > 1) {
+      ctx.save();
+      ctx.strokeStyle = "#ffd166";
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      ctx.moveTo(X(S.trail[0][0]), Y(S.trail[0][1]));
+      for (const p of S.trail) ctx.lineTo(X(p[0]), Y(p[1]));
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // 小球 B
+    ctx.save();
+    ctx.shadowColor = "rgba(0,0,0,0.45)";
+    ctx.shadowBlur = 16;
+    ctx.shadowOffsetY = 6;
+    ctx.beginPath();
+    ctx.arc(X(S.xB), Y(S.bY), RB * view.scale, 0, Math.PI * 2);
+    ctx.fillStyle = "#ffd166";
+    ctx.fill();
+    ctx.strokeStyle = "#b98a1f";
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.save();
+    ctx.fillStyle = "#cfe0f5";
+    ctx.font = "700 20px 'Microsoft YaHei',sans-serif";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    ctx.fillText("B", X(S.xB) + RB * view.scale + 12, Y(S.bY) - 2);
+    ctx.restore();
+
+    // B 的竖直参考线（最后画，半透明压在图形上）
+    ctx.save();
+    ctx.setLineDash([6, 8]);
+    ctx.strokeStyle = "rgba(255,209,102,0.42)";
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(X(S.xB), Y(g0.H + 1.1));
+    ctx.lineTo(X(S.xB), Y(0));
+    ctx.stroke();
+    ctx.restore();
+
+    // 受力箭头
+    if (S.showForce) {
+      const pxPerN = 120 / (S.mB * G);       // B 的重力固定 120px
+      const gA = 2.6 * S.mB;                 // A 画多长：按质量放大一点，视觉上够长
+      const cxA = X((g0.xTL + g0.xBR) / 2), cyA = Y((g0.yTL + g0.yBR) / 2);
+      const cB = X(S.xB), cBy = Y(S.bY);
+
+      // A 的重力（竖直向下）
+      strokeArrow(cxA, cyA, cxA, cyA + 110, "#ff5c5c", 4.5);
+      pill(cxA, cyA + 132, "G_A", "#ff5c5c");
+
+      // A 受到的斜面支持力（垂直斜面向外）
+      const nx = -Math.sin(th), ny = Math.cos(th);   // 向上偏左
+      const nLen = 92;
+      const ax = X((g0.xTL + g0.xBR) / 2 - 0.35), ay = Y((g0.yTL + g0.yBR) / 2 - 0.25);
+      strokeArrow(ax, ay, ax + nx * nLen, ay - ny * nLen, "#4ea1ff", 4.5);
+      pill(ax + 4, ay + 30, "N_A", "#4ea1ff");
+
+      // B 的重力
+      strokeArrow(cB, cBy, cB, cBy + 120, "#ff5c5c", 4.5);
+      pill(cB + 52, cBy + 118, "G_B=" + (S.mB * G).toFixed(0) + "N", "#ff5c5c");
+
+      // B 受到 A 的支持力
+      if (S.phase === "onA") {
+        const nB = S.mB * G * Math.cos(th) * Math.cos(th);
+        const lenB = Math.max(16, nB * pxPerN);
+        strokeArrow(cB, cBy, cB, cBy - lenB, "#37d67a", 4.5);
+        pill(cB - 66, cBy - lenB - 16, "N_B=" + nB.toFixed(1) + "N", "#37d67a");
+      }
+    }
+  }
+
+  function updatePanel() {
+    const th = rad(S.theta);
+    document.getElementById("vT").textContent = S.t.toFixed(2) + " s";
+    document.getElementById("vS").textContent = S.s.toFixed(2) + " m";
+    document.getElementById("vVA").textContent = S.vA.toFixed(2) + " m/s";
+    const h = Math.max(0, (S.bY0 || S.bY) - S.bY);
+    document.getElementById("vH").textContent = h.toFixed(2) + " m";
+    document.getElementById("vVB").textContent = S.bV.toFixed(2) + " m/s";
+    document.getElementById("vXB").textContent = "0.00 m";
+    document.getElementById("vAA").textContent = (G * Math.sin(th)).toFixed(2) + " m/s²（沿斜面向下）";
+    if (S.phase === "onA") {
+      document.getElementById("vAB").textContent = (G * Math.sin(th) * Math.sin(th)).toFixed(2) + " m/s²（竖直向下）";
+      document.getElementById("vNB").textContent = (S.mB * G * Math.cos(th) * Math.cos(th)).toFixed(1) + " N";
+    } else {
+      document.getElementById("vAB").textContent = "10.00 m/s²（竖直向下）";
+      document.getElementById("vNB").textContent = "0 N（已脱离 A）";
+    }
+    const el = document.getElementById("state");
+    if (S.phase === "hit") {
+      el.innerHTML = "B 落到斜面上<small>全程水平位移始终为 0，轨迹是一条竖直直线</small>";
+      el.style.color = "#ffa62b";
+    } else if (S.phase === "free") {
+      el.innerHTML = "B 已脱离 A 的上表面<small>仍然只受重力，继续沿同一条竖直线下落</small>";
+      el.style.color = "#4ea1ff";
+    } else {
+      el.innerHTML = "竖直向下的直线<small>水平方向始终不受力 → 水平位移恒为 0</small>";
+      el.style.color = "#37d67a";
+    }
+  }
+
+  let last = 0, acc = 0;
+  const DT = 1 / 240;
+  function frame(ts) {
+    requestAnimationFrame(frame);
+    if (!last) last = ts;
+    let dt = Math.min((ts - last) / 1000, 0.05);
+    last = ts;
+    acc += dt;
+    let guard = 0;
+    while (acc >= DT && guard++ < 400) {
+      physics(DT);
+      acc -= DT;
+    }
+    draw();
+    updatePanel();
+  }
+
+  // ---- 交互 ----
+  const el = (id) => document.getElementById(id);
+  el("theta").addEventListener("input", (e) => {
+    S.theta = parseFloat(e.target.value);
+    el("thetaVal").textContent = S.theta + "°";
+    resize();
+    reset();
+  });
+  el("m").addEventListener("input", (e) => {
+    S.mB = parseFloat(e.target.value);
+    el("mVal").textContent = S.mB.toFixed(1) + " kg";
+  });
+  el("showTrail").addEventListener("change", (e) => { S.showTrail = e.target.checked; });
+  el("showForce").addEventListener("change", (e) => { S.showForce = e.target.checked; });
+  el("pause").addEventListener("click", (e) => {
+    S.paused = !S.paused;
+    e.target.textContent = S.paused ? "继续" : "暂停";
+  });
+  el("reset").addEventListener("click", reset);
+
+  function applyQuery() {
+    const q = new URLSearchParams(location.search);
+    if (q.has("theta")) {
+      S.theta = clamp(parseFloat(q.get("theta")), 15, 45);
+      el("theta").value = S.theta;
+      el("thetaVal").textContent = S.theta + "°";
+    }
+    if (q.has("m")) {
+      S.mB = clamp(parseFloat(q.get("m")), 0.5, 5);
+      el("m").value = S.mB;
+      el("mVal").textContent = S.mB.toFixed(1) + " kg";
+    }
+    resize();
+    reset();
+    const run = parseFloat(q.get("run") || "0");
+    if (run > 0) {
+      for (let i = 0; i < Math.round(run / DT); i++) physics(DT);
+    }
+    if (q.get("pause") === "1") {
+      S.paused = true;
+      el("pause").textContent = "继续";
+    }
+  }
+
+  window.addEventListener("resize", () => { resize(); draw(); });
+  resize();
+  applyQuery();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

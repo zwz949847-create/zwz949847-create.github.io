@@ -1,0 +1,467 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>阻尼、受迫与共振 · 同屏对比</title>
+<style>
+  :root{
+    --bg:#08101d; --panel:#101a2b; --line:#22314a; --text:#e9f0f8; --muted:#94a6c2;
+    --accent:#4ea1ff; --ok:#37d67a; --warn:#ffa62b; --danger:#ff5c5c; --violet:#c084fc;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0}
+  body{
+    background:radial-gradient(1500px 900px at 15% -10%, #16243c 0%, var(--bg) 62%);
+    color:var(--text); font:16px/1.5 "Microsoft YaHei","PingFang SC","Segoe UI",sans-serif;
+    overflow:hidden;
+  }
+  #app{display:flex;flex-direction:column;height:100vh}
+
+  header{
+    display:flex;align-items:center;gap:18px;padding:12px 22px;border-bottom:1px solid var(--line);
+    background:rgba(10,18,32,0.7)
+  }
+  header h1{margin:0;font-size:22px;letter-spacing:.5px;white-space:nowrap}
+  header .spacer{flex:1}
+  header button{
+    padding:11px 22px;border-radius:12px;border:1px solid var(--line);background:#16233a;
+    color:var(--text);font-size:17px;cursor:pointer
+  }
+  header button:hover{border-color:var(--accent)}
+  header #play{background:#1d3a63;border-color:#2d5b96;font-weight:700;min-width:150px}
+  header #reset{min-width:110px}
+  header .hint{color:var(--muted);font-size:14px}
+
+  main{flex:1;display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;padding:14px 16px 16px;min-height:0}
+  .col{
+    display:flex;flex-direction:column;background:rgba(12,20,34,0.72);border:1px solid var(--line);
+    border-radius:16px;padding:12px 12px 10px;min-height:0;position:relative;overflow:hidden
+  }
+  .col.special{border-color:#5a3a3a}
+  .col h2{
+    margin:0 0 6px;font-size:20px;text-align:center;letter-spacing:.5px;font-weight:700
+  }
+  .col.c1 h2{color:#7fb2ff}
+  .col.c2 h2{color:#ffb86b}
+  .col.c3 h2{color:#ff7a8a}
+  canvas{flex:1;width:100%;display:block;min-height:0}
+  .note{
+    margin:8px 0 0;font-size:15px;color:#c9d7ea;text-align:center;line-height:1.45;
+    border-top:1px dashed rgba(148,166,194,0.28);padding-top:8px
+  }
+  .readout{
+    margin-top:6px;display:flex;justify-content:center;gap:14px;font-size:16px;
+    color:var(--muted);font-variant-numeric:tabular-nums
+  }
+  .readout b{color:var(--text);font-size:18px}
+  .readout .hot{color:#ff8080}
+
+  .slider{margin-top:10px}
+  .slider .top{display:flex;justify-content:space-between;align-items:baseline;font-size:15px;color:var(--muted)}
+  .slider .top span{color:var(--accent);font-weight:700;font-size:20px;font-variant-numeric:tabular-nums}
+  input[type=range]{-webkit-appearance:none;width:100%;height:26px;background:transparent;cursor:pointer}
+  input[type=range]::-webkit-slider-runnable-track{height:10px;border-radius:5px;background:#1b2a43}
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;width:26px;height:26px;border-radius:50%;background:var(--accent);
+    border:3px solid #0b1220;box-shadow:0 0 0 1px #2d5b96;margin-top:-8px
+  }
+  .ticks{display:flex;justify-content:space-between;font-size:12px;color:#6f819e;margin-top:-4px}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>阻尼 · 受迫 · 共振　同屏对比</h1>
+    <span class="hint">三根相同的弹簧振子（固有周期 1.00 s），左边自由振动，中间和右边被同一个外力驱动</span>
+    <span class="spacer"></span>
+    <button id="play">同步开始</button>
+    <button id="reset">重置</button>
+  </header>
+
+  <main>
+    <section class="col c1" id="col1">
+      <h2>1. 阻尼振动（无外力）</h2>
+      <canvas id="cv1"></canvas>
+      <p class="note">能量不断损耗，振幅越来越小，最后停止</p>
+      <div class="readout"><span>振幅 A = <b id="a1">0.00</b></span><span>状态 <b id="s1">未开始</b></span></div>
+    </section>
+
+    <section class="col c2" id="col2">
+      <h2>2. 受迫振动（周期由你定）</h2>
+      <canvas id="cv2"></canvas>
+      <div class="slider">
+        <div class="top"><b>外部驱动力周期 T<sub>驱</sub></b><span id="TVal">1.00 s</span></div>
+        <input id="T" type="range" min="0.2" max="2" step="0.01" value="1" />
+        <div class="ticks"><span>0.2 s</span><span>1.0 s</span><span>2.0 s</span></div>
+      </div>
+      <p class="note">无论怎么推，小球的振动周期 = 驱动力周期</p>
+      <div class="readout"><span>振幅 A = <b id="a2">0.00</b></span><span>振动周期 <b id="p2">—</b></span></div>
+    </section>
+
+    <section class="col c3 special" id="col3">
+      <h2>3. 共振（踩中节奏）</h2>
+      <canvas id="cv3"></canvas>
+      <p class="note">当驱动力周期 = 固有周期 (1.0 s)，振幅最大，发生共振！</p>
+      <div class="readout"><span>振幅 A = <b id="a3">0.00</b></span><span>状态 <b id="s3">未开始</b></span></div>
+    </section>
+  </main>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  // ---------------- 参数 ----------------
+  const T0 = 1.0;                    // 三根弹簧共同的固有周期
+  const W0 = (2 * Math.PI) / T0;
+
+  const LEFT  = { w0: W0, beta: 0.55, x: 2.2, v: 0, amp: 0 };          // 阻尼振动
+  // 中间与右边是同样的振子（T固=1.0s），但中间加了很强的阻尼，所以振幅一直不大、只跟着驱动走
+  const MID   = { w0: W0, beta: 0.55 * W0, Amp0: 1.5, x: 0, v: 0, amp: 0 };
+  const RIGHT = { w0: W0, beta: 0.09 * W0, Amp0: 0.5, x: 0, v: 0, amp: 0 };
+
+  const S = {
+    Td: 1.0,
+    phase: 0,          // 驱动力相位（中间和右边共用）
+    running: false,
+    t: 0,
+  };
+
+  const SCALE = 52;            // 1 个位移单位 = 52 px
+  const ALERT_HALF = 1.55;     // 右侧“振幅警戒线”半高（单位）
+
+  const cvs = [document.getElementById("cv1"), document.getElementById("cv2"), document.getElementById("cv3")];
+  const ctxs = cvs.map((c) => c.getContext("2d"));
+  let sizes = [{ w: 0, h: 0 }, { w: 0, h: 0 }, { w: 0, h: 0 }];
+
+  function resize() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    cvs.forEach((c, i) => {
+      const w = Math.max(220, c.clientWidth);
+      const h = Math.max(260, c.clientHeight);
+      c.width = Math.floor(w * dpr);
+      c.height = Math.floor(h * dpr);
+      ctxs[i].setTransform(dpr, 0, 0, dpr, 0, 0);
+      sizes[i] = { w, h };
+    });
+  }
+
+  // ---------------- 物理 ----------------
+  const DT = 1 / 600;
+  const samples = { l: [], m: [], r: [] };
+
+  function accelFree(o, x, v) { return -o.w0 * o.w0 * x - 2 * o.beta * v; }
+  function accelDriven(o, x, v, ph) {
+    return -o.w0 * o.w0 * x - 2 * o.beta * v + o.w0 * o.w0 * o.Amp0 * Math.cos(ph);
+  }
+
+  function rk4(o, dt, ph, driven) {
+    const f = driven
+      ? (x, v, p) => accelDriven(o, x, v, p)
+      : (x, v) => accelFree(o, x, v);
+    const k1x = o.v, k1v = f(o.x, o.v, ph);
+    const k2x = o.v + 0.5 * dt * k1v, k2v = f(o.x + 0.5 * dt * k1x, o.v + 0.5 * dt * k1v, ph + 0.5 * dt * (driven ? (2 * Math.PI) / S.Td : 0));
+    const k3x = o.v + 0.5 * dt * k2v, k3v = f(o.x + 0.5 * dt * k2x, o.v + 0.5 * dt * k2v, ph + 0.5 * dt * (driven ? (2 * Math.PI) / S.Td : 0));
+    const k4x = o.v + dt * k3v, k4v = f(o.x + dt * k3x, o.v + dt * k3v, ph + dt * (driven ? (2 * Math.PI) / S.Td : 0));
+    o.x += (dt / 6) * (k1x + 2 * k2x + 2 * k3x + k4x);
+    o.v += (dt / 6) * (k1v + 2 * k2v + 2 * k3v + k4v);
+  }
+
+  function step(dt) {
+    const wd = (2 * Math.PI) / S.Td;
+    S.t += dt;
+    S.phase += wd * dt;
+
+    rk4(LEFT, dt, 0, false);
+    rk4(MID, dt, S.phase, true);
+    rk4(RIGHT, dt, S.phase, true);
+
+    pushSample(samples.l, Math.abs(LEFT.x));
+    pushSample(samples.m, Math.abs(MID.x));
+    pushSample(samples.r, Math.abs(RIGHT.x));
+    LEFT.amp = maxOf(samples.l);
+    MID.amp = maxOf(samples.m);
+    RIGHT.amp = maxOf(samples.r);
+  }
+
+  function pushSample(arr, v) {
+    arr.push(v);
+    if (arr.length > 900) arr.shift();   // 约 1.5 s
+  }
+  function maxOf(arr) {
+    let m = 0;
+    for (let i = 0; i < arr.length; i++) if (arr[i] > m) m = arr[i];
+    return m;
+  }
+
+  // ---------------- 绘制 ----------------
+  function drawColumn(i, o, opt) {
+    const ctx = ctxs[i];
+    const { w, h } = sizes[i];
+    const cx = w / 2;
+    const ceil = 34;
+    const rest = h * 0.56;
+    const ballY = rest - o.x * SCALE;
+    const r = 22;
+
+    ctx.clearRect(0, 0, w, h);
+
+    // 共振抖动
+    const shake = opt.resonating ? (Math.random() - 0.5) * 6 : 0;
+    ctx.save();
+    ctx.translate(shake, shake * 0.8);
+
+    // 天花板
+    ctx.save();
+    ctx.strokeStyle = "#5b7bb0";
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(cx - w * 0.34, ceil);
+    ctx.lineTo(cx + w * 0.34, ceil);
+    ctx.stroke();
+    ctx.strokeStyle = "rgba(91,123,176,0.55)";
+    ctx.lineWidth = 2;
+    for (let x = cx - w * 0.34; x < cx + w * 0.34; x += 16) {
+      ctx.beginPath();
+      ctx.moveTo(x, ceil);
+      ctx.lineTo(x - 10, ceil - 11);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // 平衡位置
+    ctx.save();
+    ctx.setLineDash([7, 7]);
+    ctx.strokeStyle = "rgba(147,164,191,0.45)";
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(cx - w * 0.30, rest);
+    ctx.lineTo(cx + w * 0.30, rest);
+    ctx.stroke();
+    ctx.restore();
+
+    // 右侧的振幅警戒线
+    if (opt.alert) {
+      const half = ALERT_HALF * SCALE;
+      ctx.save();
+      ctx.setLineDash([9, 7]);
+      ctx.strokeStyle = opt.resonating ? "rgba(255,80,90,0.95)" : "rgba(255,150,120,0.75)";
+      ctx.lineWidth = 2.4;
+      ctx.strokeRect(cx - 92, rest - half, 184, half * 2);
+      ctx.fillStyle = opt.resonating ? "rgba(255,90,90,0.95)" : "rgba(255,170,140,0.85)";
+      ctx.font = "700 15px 'Microsoft YaHei',sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "bottom";
+      ctx.fillText("振幅警戒线", cx, rest - half - 8);
+      ctx.restore();
+    }
+
+    // 弹簧
+    const coils = 9, n = coils * 2, ampW = 13;
+    const topY = ceil + 4, bottomY = ballY - r;
+    ctx.save();
+    ctx.strokeStyle = "#9db9e6";
+    ctx.lineWidth = 3;
+    ctx.lineJoin = "round";
+    ctx.beginPath();
+    ctx.moveTo(cx, topY);
+    const span = Math.max(24, bottomY - topY);
+    for (let k = 1; k < n; k++) {
+      ctx.lineTo(cx + (k % 2 ? ampW : -ampW), topY + (span * k) / n);
+    }
+    ctx.lineTo(cx, bottomY);
+    ctx.stroke();
+    ctx.restore();
+
+    // 小球
+    ctx.save();
+    const hot = opt.resonating;
+    if (hot) {
+      ctx.shadowColor = "rgba(255,90,60,0.9)";
+      ctx.shadowBlur = 34;
+    } else {
+      ctx.shadowColor = "rgba(0,0,0,0.5)";
+      ctx.shadowBlur = 14;
+      ctx.shadowOffsetY = 6;
+    }
+    const grd = ctx.createRadialGradient(cx - 7, ballY - 9, 3, cx, ballY, r);
+    grd.addColorStop(0, hot ? "#ffd0c8" : "#ffe9a8");
+    grd.addColorStop(1, hot ? "#e04a3c" : "#e0a92e");
+    ctx.beginPath();
+    ctx.arc(cx, ballY, r, 0, Math.PI * 2);
+    ctx.fillStyle = grd;
+    ctx.fill();
+    ctx.strokeStyle = hot ? "#8f1f14" : "#b98a1f";
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    ctx.restore();
+
+    // 驱动力箭头（中间和右边）
+    if (opt.force) {
+      const fd = Math.cos(S.phase);
+      if (Math.abs(fd) > 0.1) {
+        const len = 30 + Math.abs(fd) * 34;
+        const dir = fd > 0 ? -1 : 1;
+        const x0 = cx + 64;
+        const y1 = ballY, y2 = ballY + dir * len;
+        ctx.save();
+        ctx.strokeStyle = "#c084fc";
+        ctx.fillStyle = "#c084fc";
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(x0, y1);
+        ctx.lineTo(x0, y2);
+        ctx.stroke();
+        const ang = dir > 0 ? Math.PI / 2 : -Math.PI / 2;
+        ctx.beginPath();
+        ctx.moveTo(x0, y2);
+        ctx.lineTo(x0 - 9 * Math.cos(ang - 0.45), y2 - 9 * Math.sin(ang - 0.45));
+        ctx.lineTo(x0 - 9 * Math.cos(ang + 0.45), y2 - 9 * Math.sin(ang + 0.45));
+        ctx.closePath();
+        ctx.fill();
+        ctx.font = "600 13px 'Microsoft YaHei',sans-serif";
+        ctx.textAlign = "left";
+        ctx.textBaseline = "middle";
+        ctx.fillText("F", x0 + 10, y2);
+        ctx.restore();
+      }
+    }
+
+    // 振幅标尺
+    const barX = cx - w * 0.34;
+    const ampPx = Math.min(o.amp * SCALE, h * 0.42);
+    ctx.save();
+    ctx.strokeStyle = "#3d5375";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(barX, rest - h * 0.40);
+    ctx.lineTo(barX, rest + h * 0.40);
+    ctx.stroke();
+    ctx.strokeStyle = hot ? "#ff6b6b" : "#ffd166";
+    ctx.lineWidth = 7;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(barX, rest);
+    ctx.lineTo(barX, rest - ampPx);
+    ctx.stroke();
+    ctx.fillStyle = "#7f96b8";
+    ctx.font = "600 12px 'Microsoft YaHei',sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "top";
+    ctx.fillText("A", barX, rest + h * 0.40 + 4);
+    ctx.restore();
+
+    // 共振红闪
+    if (opt.resonating) {
+      ctx.save();
+      ctx.fillStyle = "rgba(255,60,50,0.06)";
+      ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = "rgba(255,110,100,0.95)";
+      ctx.font = "700 22px 'Microsoft YaHei',sans-serif";
+      ctx.textAlign = "left";
+      ctx.textBaseline = "top";
+      ctx.fillText("共 振 ！", 14, 12);
+      ctx.restore();
+    }
+
+    ctx.restore();
+  }
+
+  function render() {
+    drawColumn(0, LEFT, { force: false, alert: false, resonating: false });
+    drawColumn(1, MID, { force: true, alert: false, resonating: false });
+    drawColumn(2, RIGHT, { force: true, alert: true, resonating: RIGHT.amp > ALERT_HALF });
+  }
+
+  // ---------------- 面板文字 ----------------
+  function updateText() {
+    document.getElementById("a1").textContent = LEFT.amp.toFixed(2);
+    document.getElementById("s1").textContent = !S.running && S.t === 0 ? "未开始" : (LEFT.amp < 0.06 ? "已基本停止" : "振幅在减小");
+
+    document.getElementById("a2").textContent = MID.amp.toFixed(2);
+    document.getElementById("p2").textContent = S.Td.toFixed(2) + " s";
+
+    document.getElementById("a3").textContent = RIGHT.amp.toFixed(2);
+    const s3 = document.getElementById("s3");
+    if (S.t === 0 && !S.running) {
+      s3.textContent = "未开始";
+      s3.className = "";
+    } else if (RIGHT.amp > ALERT_HALF) {
+      s3.textContent = "发生共振";
+      s3.className = "hot";
+    } else if (Math.abs(S.Td - T0) < 0.2) {
+      s3.textContent = "接近共振";
+      s3.className = "hot";
+    } else {
+      s3.textContent = !S.running && S.t === 0 ? "未开始" : "小振幅";
+      s3.className = "";
+    }
+  }
+
+  // ---------------- 主循环 ----------------
+  let last = 0, acc = 0;
+  function frame(ts) {
+    requestAnimationFrame(frame);
+    if (!last) last = ts;
+    let dt = Math.min((ts - last) / 1000, 0.05);
+    last = ts;
+    if (S.running) {
+      acc += dt;
+      let guard = 0;
+      while (acc >= DT && guard++ < 900) { step(DT); acc -= DT; }
+    }
+    render();
+    updateText();
+  }
+
+  // ---------------- 交互 ----------------
+  const el = (id) => document.getElementById(id);
+
+  el("play").addEventListener("click", (e) => {
+    S.running = !S.running;
+    e.target.textContent = S.running ? "暂停" : "继续";
+  });
+
+  el("reset").addEventListener("click", () => {
+    LEFT.x = 2.2; LEFT.v = 0; LEFT.amp = 0;
+    MID.x = 0; MID.v = 0; MID.amp = 0;
+    RIGHT.x = 0; RIGHT.v = 0; RIGHT.amp = 0;
+    samples.l.length = samples.m.length = samples.r.length = 0;
+    S.phase = 0; S.t = 0; S.running = false;
+    el("play").textContent = "同步开始";
+  });
+
+  el("T").addEventListener("input", (e) => {
+    S.Td = parseFloat(e.target.value);
+    el("TVal").textContent = S.Td.toFixed(2) + " s";
+  });
+
+  function applyQuery() {
+    const q = new URLSearchParams(location.search);
+    if (q.has("T")) {
+      S.Td = Math.max(0.2, Math.min(2, parseFloat(q.get("T"))));
+      el("T").value = S.Td;
+      el("TVal").textContent = S.Td.toFixed(2) + " s";
+    }
+    const run = parseFloat(q.get("run") || "0");
+    if (run > 0) {
+      for (let i = 0; i < Math.round(run / DT); i++) step(DT);
+    }
+    if (q.get("pause") === "1") {
+      S.running = false;
+      el("play").textContent = "继续";
+    } else if (run > 0) {
+      S.running = true;
+      el("play").textContent = "暂停";
+    }
+  }
+
+  window.addEventListener("resize", () => { resize(); render(); });
+  resize();
+  applyQuery();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
