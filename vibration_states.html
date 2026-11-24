@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>阻尼、受迫与共振 · 同屏对比</title>
 <style>
   :root{
@@ -67,6 +67,28 @@
     border:3px solid #0b1220;box-shadow:0 0 0 1px #2d5b96;margin-top:-8px
   }
   .ticks{display:flex;justify-content:space-between;font-size:12px;color:#6f819e;margin-top:-4px}
+
+  /* ---------- 手机竖屏：三栏改为一列 ---------- */
+  @media (max-width: 900px) {
+    html, body { height: auto; }
+    body { overflow-y: auto; overflow-x: hidden; -webkit-text-size-adjust: 100%; }
+    #app { height: auto; min-height: 100vh; }
+    header { flex-wrap: wrap; gap: 10px; padding: 10px 14px; }
+    header h1 { font-size: 18px; width: 100%; }
+    header .hint { display: none; }
+    header #play, header #reset { flex: 1; min-width: 120px; font-size: 16px; padding: 11px 12px; }
+    main { grid-template-columns: 1fr; gap: 12px; padding: 12px; }
+    .col { padding: 10px; }
+    .col h2 { font-size: 17px; }
+    .col canvas { height: 30vh; min-height: 190px; flex: none; }
+    .note { font-size: 13px; margin-top: 6px; padding-top: 6px; }
+    .readout { font-size: 14px; gap: 10px; }
+    .readout b { font-size: 16px; }
+    .slider .top { font-size: 13px; }
+    .slider .top span { font-size: 17px; }
+    input[type=range] { height: 30px; }
+    input[type=range]::-webkit-slider-thumb { width: 26px; height: 26px; margin-top: -8px; }
+  }
 </style>
 </head>
 <body>
@@ -199,10 +221,11 @@
   function drawColumn(i, o, opt) {
     const ctx = ctxs[i];
     const { w, h } = sizes[i];
+    const sc = Math.min(SCALE, h / 7.2);      // 小屏时按画布高度自动缩小
     const cx = w / 2;
     const ceil = 34;
     const rest = h * 0.56;
-    const ballY = rest - o.x * SCALE;
+    const ballY = rest - o.x * sc;
     const r = 22;
 
     ctx.clearRect(0, 0, w, h);
@@ -243,7 +266,7 @@
 
     // 右侧的振幅警戒线
     if (opt.alert) {
-      const half = ALERT_HALF * SCALE;
+      const half = ALERT_HALF * sc;
       ctx.save();
       ctx.setLineDash([9, 7]);
       ctx.strokeStyle = opt.resonating ? "rgba(255,80,90,0.95)" : "rgba(255,150,120,0.75)";
@@ -330,7 +353,7 @@
 
     // 振幅标尺
     const barX = cx - w * 0.34;
-    const ampPx = Math.min(o.amp * SCALE, h * 0.42);
+    const ampPx = Math.min(o.amp * sc, h * 0.42);
     ctx.save();
     ctx.strokeStyle = "#3d5375";
     ctx.lineWidth = 3;
