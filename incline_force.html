@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>斜面受力分析与运动状态 · 动态演示</title>
 <style>
   :root{
@@ -71,6 +71,31 @@
   .toggles{display:flex;gap:16px;font-size:14px;color:var(--muted)}
   .toggles label{display:flex;align-items:center;gap:6px;cursor:pointer}
   .toggles input{width:16px;height:16px;accent-color:var(--accent)}
+
+  /* ---------- 手机竖屏：画布在上、面板在下 ---------- */
+  @media (max-width: 900px) {
+    html, body { height: auto; }
+    body { overflow-y: auto; overflow-x: hidden; -webkit-text-size-adjust: 100%; }
+    #app { grid-template-columns: 1fr; height: auto; min-height: 100vh; }
+    #stage { height: 56vh; min-height: 320px; }
+    #badge { display: none; }
+    #legend { font-size: 12px; padding: 6px 10px; gap: 10px; right: 10px; top: 10px; max-width: calc(100% - 20px); flex-wrap: wrap; }
+    #legend i { width: 16px; }
+    aside { border-left: 0; border-top: 1px solid var(--line); padding: 14px 14px 22px; overflow: visible; }
+    aside h1 { font-size: 19px; }
+    .sub { font-size: 12px; }
+    #state { font-size: 23px; padding: 12px; }
+    .card { padding: 10px 12px; }
+    .grid { font-size: 15px; gap: 5px 10px; }
+    .note { font-size: 12px; }
+    .slider .top { font-size: 15px; }
+    .slider .top span { font-size: 16px; }
+    input[type=range] { height: 30px; }
+    input[type=range]::-webkit-slider-runnable-track { height: 10px; }
+    input[type=range]::-webkit-slider-thumb { width: 26px; height: 26px; margin-top: -8px; }
+    .btns button, .dirbtns button { font-size: 15px; padding: 11px 10px; }
+    .pts { grid-template-columns: repeat(6, 1fr); }
+  }
 </style>
 </head>
 <body>
@@ -180,8 +205,6 @@
     const h = cv.parentElement.clientHeight;
     cv.width = Math.floor(w * dpr);
     cv.height = Math.floor(h * dpr);
-    cv.style.width = w + "px";
-    cv.style.height = h + "px";
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     view.w = w; view.h = h;
 
@@ -191,7 +214,7 @@
     const worldH = RAMP_L * Math.sin(th) + 2.4;
     view.baseW = worldW;
     view.baseH = worldH;
-    view.target = Math.max(55, Math.min(150, Math.min((w - 110) / worldW, (h - 130) / worldH)));
+    view.target = Math.max(16, Math.min(150, Math.min((w - 60) / worldW, (h - 90) / worldH)));
     if (!view.scale || Math.abs(view.scale - view.target) > 60) view.scale = view.target;
     view.ox = 66;
     view.oy = h - 170;
@@ -357,7 +380,7 @@
     if (S.phase !== "ramp") {
       const wNeed = Math.max(RAMP_L * Math.cos(th) + 3.4, S.x + 3.4);
       const hNeed = Math.max(RAMP_L * Math.sin(th) + 2.4, S.y + 2.2);
-      const target = Math.max(40, Math.min(150, Math.min((view.w - 110) / wNeed, (view.h - 130) / hNeed)));
+      const target = Math.max(16, Math.min(150, Math.min((view.w - 60) / wNeed, (view.h - 90) / hNeed)));
       view.target = view.target + (target - view.target) * 0.35;
       view.ox = 66 - Math.min(0, S.x) * view.scale;
     } else {
@@ -445,7 +468,7 @@
     const bs = BLOCK * view.scale;
 
     // 箭头比例：G 的屏幕长度固定约 170px，这样各力之间的比例一眼可比
-    const pxPerN = 150 / (S.m * G);
+    const pxPerN = Math.min(150, view.h * 0.22) / (S.m * G);
     const pending = [];
 
     const drawForce = (dx, dy, color, label, dashed, off) => {
@@ -553,6 +576,7 @@
     }
     for (const L of pending) {
       L.y = Math.max(24, Math.min(view.h - 20, L.y));
+      L.x = Math.max(64, Math.min(view.w - 64, L.x));
       pill(L.x, L.y, L.text, L.color, "center");
     }
   }
@@ -597,6 +621,8 @@
 
   function frame(ts) {
     requestAnimationFrame(frame);
+    // 画布尺寸自愈：布局变化（手机旋转、面板换行）后自动重算
+    if (Math.abs(cv.clientWidth - view.w) > 2 || Math.abs(cv.clientHeight - view.h) > 2) resize();
     if (!last) last = ts;
     let dt = (ts - last) / 1000;
     last = ts;

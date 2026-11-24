@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>劈形物体 A 与小球 B · 轨迹演示</title>
 <style>
   :root{
@@ -69,6 +69,31 @@
   .toggles input{width:16px;height:16px;accent-color:var(--accent)}
   .ans{font-size:15px;line-height:1.7;color:#cfe0f5}
   .ans b{color:var(--ok)}
+
+  /* ---------- 手机竖屏：画布在上、面板在下 ---------- */
+  @media (max-width: 900px) {
+    html, body { height: auto; }
+    body { overflow-y: auto; overflow-x: hidden; -webkit-text-size-adjust: 100%; }
+    #app { grid-template-columns: 1fr; height: auto; min-height: 100vh; }
+    #stage { height: 56vh; min-height: 320px; }
+    #badge { display: none; }
+    #legend { font-size: 12px; padding: 6px 10px; gap: 10px; right: 10px; top: 10px; max-width: calc(100% - 20px); flex-wrap: wrap; }
+    #legend i { width: 16px; }
+    aside { border-left: 0; border-top: 1px solid var(--line); padding: 14px 14px 22px; overflow: visible; }
+    aside h1 { font-size: 19px; }
+    .sub { font-size: 12px; }
+    #state { font-size: 23px; padding: 12px; }
+    .card { padding: 10px 12px; }
+    .grid { font-size: 15px; gap: 5px 10px; }
+    .note { font-size: 12px; }
+    .slider .top { font-size: 15px; }
+    .slider .top span { font-size: 16px; }
+    input[type=range] { height: 30px; }
+    input[type=range]::-webkit-slider-runnable-track { height: 10px; }
+    input[type=range]::-webkit-slider-thumb { width: 26px; height: 26px; margin-top: -8px; }
+    .btns button, .dirbtns button { font-size: 15px; padding: 11px 10px; }
+    .pts { grid-template-columns: repeat(6, 1fr); }
+  }
 </style>
 </head>
 <body>
@@ -171,13 +196,11 @@
     const h = cv.parentElement.clientHeight;
     cv.width = Math.floor(w * dpr);
     cv.height = Math.floor(h * dpr);
-    cv.style.width = w + "px";
-    cv.style.height = h + "px";
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     view.w = w; view.h = h;
     const th = rad(S.theta);
     const H = BASE * Math.tan(th);
-    view.target = Math.min((w - 150) / (BASE + 0.8), (h - 150) / (H + 1.4));
+    view.target = Math.max(12, Math.min((w - 60) / (BASE + 0.8), (h - 80) / (H + 1.4)));
     if (!view.scale || Math.abs(view.scale - view.target) > 60) view.scale = view.target;
     view.ox = 78;
     view.oy = h - 96;
@@ -392,11 +415,13 @@
     ctx.moveTo(X(g0.xTL), Y(g0.yTL));
     ctx.lineTo(X(g0.xTR), Y(g0.yTR));
     ctx.stroke();
-    ctx.fillStyle = "#ffd166";
-    ctx.font = "600 15px 'Microsoft YaHei',sans-serif";
-    ctx.textAlign = "left";
-    ctx.textBaseline = "bottom";
-    ctx.fillText("A 的上表面（水平、光滑）", X(g0.xTR) + 10, Y(g0.yTR) - 6);
+    if (view.w > 700) {
+      ctx.fillStyle = "#ffd166";
+      ctx.font = "600 15px 'Microsoft YaHei',sans-serif";
+      ctx.textAlign = "left";
+      ctx.textBaseline = "bottom";
+      ctx.fillText("A 的上表面（水平、光滑）", X(g0.xTR) + 10, Y(g0.yTR) - 6);
+    }
     ctx.restore();
 
     // 斜面表面（加粗，画在 A 之上，保证斜边连续）
@@ -522,6 +547,8 @@
   const DT = 1 / 240;
   function frame(ts) {
     requestAnimationFrame(frame);
+    // 画布尺寸自愈：布局变化（手机旋转、面板换行）后自动重算
+    if (Math.abs(cv.clientWidth - view.w) > 2 || Math.abs(cv.clientHeight - view.h) > 2) resize();
     if (!last) last = ts;
     let dt = Math.min((ts - last) / 1000, 0.05);
     last = ts;

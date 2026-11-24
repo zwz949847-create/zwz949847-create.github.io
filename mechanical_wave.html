@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>机械波动态演示 · 横波</title>
 <style>
   :root{
@@ -74,6 +74,31 @@
 
   .legend{display:flex;gap:14px;font-size:13px;color:var(--muted);margin-top:8px;flex-wrap:wrap}
   .legend i{display:inline-block;width:22px;height:4px;border-radius:2px;margin-right:6px;vertical-align:middle}
+
+  /* ---------- 手机竖屏：画布在上、面板在下 ---------- */
+  @media (max-width: 900px) {
+    html, body { height: auto; }
+    body { overflow-y: auto; overflow-x: hidden; -webkit-text-size-adjust: 100%; }
+    #app { grid-template-columns: 1fr; height: auto; min-height: 100vh; }
+    #stage { height: 56vh; min-height: 320px; }
+    #badge { display: none; }
+    #legend { font-size: 12px; padding: 6px 10px; gap: 10px; right: 10px; top: 10px; max-width: calc(100% - 20px); flex-wrap: wrap; }
+    #legend i { width: 16px; }
+    aside { border-left: 0; border-top: 1px solid var(--line); padding: 14px 14px 22px; overflow: visible; }
+    aside h1 { font-size: 19px; }
+    .sub { font-size: 12px; }
+    #state { font-size: 23px; padding: 12px; }
+    .card { padding: 10px 12px; }
+    .grid { font-size: 15px; gap: 5px 10px; }
+    .note { font-size: 12px; }
+    .slider .top { font-size: 15px; }
+    .slider .top span { font-size: 16px; }
+    input[type=range] { height: 30px; }
+    input[type=range]::-webkit-slider-runnable-track { height: 10px; }
+    input[type=range]::-webkit-slider-thumb { width: 26px; height: 26px; margin-top: -8px; }
+    .btns button, .dirbtns button { font-size: 15px; padding: 11px 10px; }
+    .pts { grid-template-columns: repeat(6, 1fr); }
+  }
 </style>
 </head>
 <body>
@@ -167,8 +192,6 @@
     const h = cv.parentElement.clientHeight;
     cv.width = Math.floor(w * dpr);
     cv.height = Math.floor(h * dpr);
-    cv.style.width = w + "px";
-    cv.style.height = h + "px";
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     view.w = w; view.h = h;
     const x0 = -1.2, x1 = S.n + 1.2;
@@ -389,6 +412,8 @@
   let last = 0;
   function frame(ts) {
     requestAnimationFrame(frame);
+    // 画布尺寸自愈：布局变化（手机旋转、面板换行）后自动重算
+    if (Math.abs(cv.clientWidth - view.w) > 2 || Math.abs(cv.clientHeight - view.h) > 2) resize();
     if (!last) last = ts;
     let dt = Math.min((ts - last) / 1000, 0.05);
     last = ts;
